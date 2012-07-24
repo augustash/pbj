@@ -1,0 +1,256 @@
+<?php
+
+/**
+ * @file
+ * Markdown editor and image browser for use on textareas
+ */
+
+// Some sanity includes
+require dirname(__FILE__) . '/hooks/pbj.hook_filter.inc';
+
+/**
+ * Implementation of hook_menu().
+ *
+ * Add a settings page to configure the module.
+ */
+function pbj_menu() {
+  module_load_include('inc', 'pbj', 'hooks/pbj.hook_menu'); 
+  return _pbj_menu();
+}
+
+/**
+ * Implements hook_node_presave
+ */
+function pbj_node_presave($node) {
+  $field_name = variable_get('pbj_field_' . $node->type, FALSE);
+  if (!empty($node->pbj_save)) {
+    // Reset save date
+    $node->changed = $node->original->changed;
+  }elseif($field_name && isset($node->{$field_name}[$node->language]) && $node->original->{$field_name}[$node->language]){
+    /**
+     * For PBJ enabled nodes, we need to prevent the imagefield from being saved
+     * when the main node is saved.
+     */
+    $node->{$field_name}[$node->language] = $node->original->{$field_name}[$node->language];
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * If the form is either a custom block form or a node edit form, add the JS nessesary.
+ */
+function pbj_form_alter(&$form, &$form_state, $form_id) {
+  if (isset($form['#node_edit_form']) && $form['#node_edit_form']
+    || isset($form['module']) && $form['module']['#value'] == 'block') {
+      $formIdent = '';
+      if (isset($form['#node_edit_form']) && $form['#node_edit_form']) {
+        $formIdent = 'node_' . $form['nid']['#value'];
+      } else {
+        $formIdent = 'block_' . $form['delta']['#value'];
+      }
+      
+      // Add JavaScript to the form if the pbj editor library is installed.
+      if (pbj_library_installed()) {
+        $form['pbj_identifier'] = array(
+          '#type' => 'hidden',
+          '#value' => $formIdent,
+        );
+
+        ctools_include('plugins');
+        // Try to load the insert plugin we have chosen to use.
+        // Linkit support
+        // Add base settings.
+        _linkit_add_settings('field');
+        $plugin = ctools_get_plugins('linkit', 'linkit_insert', 'markdown');
+        $field_js = array(
+          'data' => array(
+            'linkit' => array(
+              'fields' => array(
+              ),
+            ),
+          ),
+          'type' => 'setting',
+        );
+
+        // Hide image field
+        $field_name = variable_get('pbj_field_' . $form['type']['#value'], FALSE);
+        if($field_name) $form[$field_name]['#access'] = FALSE;
+
+        foreach (element_children($form) as $key) {
+          if(isset($form[$key]['#language']) 
+            && isset($form[$key][$form[$key]['#language']]) 
+            && isset($form[$key][$form[$key]['#language']][0])
+            && $form[$key][$form[$key]['#language']][0]['#type'] == 'text_format'){
+            $textarea = &$form[$key][$form[$key]['#language']][0];
+            $form[$key]['#attributes']['class'][] = 'wmd-panel clearfix';
+            $textarea['#field_prefix'] = '<div id="wmd-button-bar" class="wmd-button-bar"></div>';
+            $textarea['#field_suffix'] = '<style type="text/css">'.variable_get('pbj_styles', '').'</style><div class="wmd-preview well"><div id="wmd-preview" class="wmd-panel wmd-preview clearfix" style="width:'.variable_get('pbj_width', '').'; margin: 0 auto; background:#fff; padding:30px;"></div></div>';
+            $textarea['#attributes']['class'][] = 'wmd-input';
+            $textarea['#attributes']['id'] = 'wmd-input';
+            $textarea['#resizable'] = FALSE;
+
+            // Linkit support
+            $field_js['data']['linkit']['fields']['wmd-input'] = array('insert_plugin' => 'markdown');
+            // Attach js files and settings Linkit needs.
+            $textarea += array(
+              '#attached' => array(
+                'js' => array(
+                  $plugin['javascript'],
+                  $field_js,
+                ),
+              ),
+            );
+          }
+        }
+        $form['#after_build'] = array('pbj_node_block_edit_form_attach_js');
+      } else {
+        global $base_path;
+        drupal_set_message(
+          t(
+            'The Pagedown Bootstrap library is missing, please check the !readme_link for installation instructions.',
+            array('!readme_link' => '<a href="' . $base_path . drupal_get_path('module', 'pbj') . '/README.txt" target="_blank">README</a>')
+          ), 'error'
+        );
+      }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Adds menu options to the node type form.
+ */
+function pbj_form_node_type_form_alter(&$form, $form_state){
+  $bundle = $form['#node_type']->type;
+  $entity_fields = field_info_instances('node', $bundle);
+  $all_fields = field_info_fields();
+  $supported_field_types = array('image_image');
+  $valid_fields = array(0=>'Do not use');
+  $invalid_fields = array();
+
+  // Get a list of all valid fields that we both support and are part of this entity
+  foreach ($entity_fields as $field) {
+    if(in_array($field['widget']['type'], $supported_field_types)){
+      if($all_fields[$field['field_name']]['cardinality'] == -1){
+        // Support unlimited fields
+        $valid_fields[$field['field_name']] = $field['label'];
+      }else{
+        $invalid_fields[$field['field_name']] = $field['label'];
+      }
+    }
+  }
+
+  $message = '';
+  if(count($invalid_fields)){
+    $message = ' '.t('<em>You have several fields that are images but do not support unlimited images. (@fields)</em>', array('@fields'=>implode(', ', $invalid_fields)));
+  }
+
+  $form['pbj'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Peanut Butter & Jelly'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#attributes' => array(
+      'class' => array('pbj-form'),
+    ),
+    '#attached' => array(
+      'js' => array(drupal_get_path('module', 'pbj') . '/js/pbj.admin.js'),
+    ),
+    '#group' => 'additional_settings',
+  );
+
+  $form['pbj']['pbj_field'] = array(
+    '#type' => 'select',
+    '#title' => t('Image Browser Field'),
+    '#options' => $valid_fields,
+    '#default_value' => variable_get('pbj_field_' . $bundle, array()),
+    '#description' => t('Allow PB&J to use this field for its image browser. Only image fields with unlimited images are supported.').$message,
+  );
+}
+
+/**
+ * Add JS to the page containing the affected forms.
+ */
+function pbj_node_block_edit_form_attach_js($form) {
+  global $base_path;
+  $addJsSettings = array(
+    'text_formats' => array_values(variable_get('pbj_filter_formats', array())),
+    'theme' => variable_get('pbj_theme', 'dark'),
+    'syntax' => variable_get('pbj_default_syntax', 'dark'),
+    'printmargin' => variable_get('pbj_printmargin', false),
+    'fontsize' => variable_get('pbj_fontsize', '10pt'),
+    'ace_src_dir' => $base_path . 'sites/all/libraries/ace/src/',
+  );
+  
+  $jsSettings = array(
+    'pbj' => array(
+      'settings' => $addJsSettings,
+      'browser' => variable_get('pbj_field_' . $form['type']['#value'], FALSE),
+      'nid' => $form['nid']['#value']
+    ),
+  );
+  
+  pbj_add_js($addJsSettings, true);
+  drupal_add_js($jsSettings, 'setting');
+
+  return $form;
+}
+
+/**
+ * Add all JavaScript needed for the editor to work on the next page.
+ */
+function pbj_add_js($addJsSettings, $forAdminPages) {
+  //drupal_add_library('pbj', 'pbj', FALSE);
+  drupal_add_library('pbj', 'pbj_pagedown', FALSE);
+  drupal_add_js(drupal_get_path('module', 'pbj') . '/js/pbj.js');
+  drupal_add_css(drupal_get_path('module', 'pbj') . '/style/pbj.css');
+}
+
+/**
+ * Implements hook_library().
+ *
+ * Add the ace JS library for use with drupal.
+ */
+function pbj_library() {
+
+  $libraries['pbj_pagedown'] = array(
+    'title' => 'Pagedown-Bootstrap',
+    'version' => '1.0',
+    'js' => array(
+      'sites/all/libraries/pagedown-bootstrap/Markdown.Converter.js' => array(),
+      'sites/all/libraries/pagedown-bootstrap/Markdown.Sanitizer.js' => array(),
+      'sites/all/libraries/pagedown-bootstrap/Markdown.Editor.js' => array(),
+    ),
+    'css' => array(
+      'sites/all/libraries/pagedown-bootstrap/Markdown.Editor.css' => array(
+        'type' => 'file', 
+        'media' => 'screen',
+      ),
+    ),
+  );
+
+  $libraries['pbj'] = array(
+    'title' => 'Bootstrap-WYSIHTML5',
+    'version' => '0.3.0',
+    'js' => array(
+      'sites/all/libraries/bootstrap-wysihtml5/js/wysihtml5-0.3.0.min.js' => array(),
+      'sites/all/libraries/bootstrap-wysihtml5/js/bootstrap-wysihtml5.js' => array(),
+    ),
+    'css' => array(
+      'sites/all/libraries/bootstrap-wysihtml5/css/bootstrap-wysihtml5.css' => array(
+        'type' => 'file', 
+        'media' => 'screen',
+      ),
+    ),
+  );
+
+  return $libraries;
+}
+
+/**
+* Returns if the library seems to be installed.
+*/
+function pbj_library_installed() {
+  return file_exists('sites/all/libraries/pagedown-bootstrap/Markdown.Editor.js');
+}

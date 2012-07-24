@@ -1,0 +1,8 @@
+name = Peanut Butter & Jelly
+description = A markdown editor using pagedown-bootstrap
+package = August Ash
+core = 7.x
+configure = admin/config/content/pbj
+
+dependencies[] = ctools
+dependencies[] = linkit
