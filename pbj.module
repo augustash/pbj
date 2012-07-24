@@ -182,12 +182,11 @@ function pbj_node_block_edit_form_attach_js($form) {
     'fontsize' => variable_get('pbj_fontsize', '10pt'),
     'ace_src_dir' => $base_path . 'sites/all/libraries/ace/src/',
   );
-  
   $jsSettings = array(
     'pbj' => array(
       'settings' => $addJsSettings,
       'browser' => variable_get('pbj_field_' . $form['type']['#value'], FALSE),
-      'nid' => $form['nid']['#value']
+      'nid' => $form['nid']['#value'] ? $form['nid']['#value'] : 'new',
     ),
   );
   

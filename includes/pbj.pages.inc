@@ -42,6 +42,16 @@ function _pbj_image_dashboard($node, $op = 'browse', $a1 = NULL){
   );
 }
 
+function _pbj_image_new(){ 
+  $output = '';
+  $commands = array();
+  $commands[] = ajax_command_html('.modal-body', '<div id="pbj">'.$output.'</div>');
+  $commands[] = ajax_command_prepend('.modal-body', theme('status_messages'));  
+  return array(
+    '#type' => 'ajax',
+    '#commands' => $commands,
+  );
+}
 
 /**
  * Image delete form
