@@ -161,6 +161,8 @@ function pbj_form_alter(&$form, &$form_state, $form_id) {
             && $form[$key][$form[$key]['#language']][0]['#type'] == 'text_format'){
             $textarea = &$form[$key][$form[$key]['#language']][0];
             $form[$key]['#attributes']['class'][] = 'wmd-panel clearfix';
+            $textarea['#prefix'] = $textarea['#prefix'].'asdf';
+            $textarea['#suffix'] = 'asdf'.$textarea['#suffix'];
             $textarea['#field_prefix'] = '<div id="wmd-button-bar" class="wmd-button-bar"></div>';
             $textarea['#field_suffix'] = '<style type="text/css">'.variable_get('pbj_styles', '').'</style><div class="wmd-preview well"><div id="wmd-preview" class="wmd-panel wmd-preview clearfix" style="width:'.variable_get('pbj_width', '').'; margin: 0 auto; background:#fff; padding:30px;"></div></div>';
             $textarea['#attributes']['class'][] = 'wmd-input';
