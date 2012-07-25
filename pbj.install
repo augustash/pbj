@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the PBJ module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function pbj_schema() {
+  $schema = array();
+  $schema['cache_pbj'] = drupal_get_schema_unprocessed('system', 'cache');
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function pbj_uninstall() {
+  // Delete all the pathauto variables and then clear the variable cache
+  db_query("DELETE FROM {variable} WHERE name LIKE 'pbj_%'");
+  drupal_uninstall_schema('pbj');
+}
