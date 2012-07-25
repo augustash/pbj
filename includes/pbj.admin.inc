@@ -31,11 +31,12 @@ function pbj_settings_form($form, &$form_state) {
 		),
 	);
 
+	$default = ".wmd-preview img.float-left{float:left;margin: 5px 20px 20px 0;}\n.wmd-preview img.float-right{float:right;margin: 5px 0 20px 20px;}\n.wmd-preview img.center{margin:0 auto;}\n.wmd-preview img{display:block;}\n.wmd-preview ol li{list-style-type: decimal;}\n.wmd-preview ul li{list-style-type: disc;}";
 	$form['pbj_styles'] = array(
 		'#type' => 'textarea',
 		'#title' => t('CSS Styles to use in preview area'),
 		'#description' => t('The preview area is contained in a div with the class of .wmd-preview'),
-		'#default_value' => variable_get('pbj_styles', ''),
+		'#default_value' => variable_get('pbj_styles', $default),
 	);
 
 	$form['pbj_width'] = array(
