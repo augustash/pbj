@@ -160,9 +160,8 @@ function pbj_form_alter(&$form, &$form_state, $form_id) {
             && isset($form[$key][$form[$key]['#language']][0]['#type'])
             && $form[$key][$form[$key]['#language']][0]['#type'] == 'text_format'){
             $textarea = &$form[$key][$form[$key]['#language']][0];
+            $form[$key][$form[$key]['#attributes']['class'][] = 'clearfix';
             $form[$key]['#attributes']['class'][] = 'wmd-panel clearfix';
-            $prefix = 'asdf';
-            $suffix = 'asdf';
             $textarea['#prefix'] = empty($textarea['#prefix']) ? $prefix : $textarea['#prefix'].$prefix;
             $textarea['#suffix'] = empty($textarea['#suffix']) ? $suffix : $suffix.$textarea['#suffix'];
             $textarea['#field_prefix'] = '<div id="wmd-button-bar" class="wmd-button-bar"></div>';
