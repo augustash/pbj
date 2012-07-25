@@ -52,8 +52,8 @@ function _pbj_image_dashboard($id, $op = 'browse', $a1 = NULL){
  */
 function _pbj_image_dashboard_form($form, &$form_state, $node){
 
-	// Make sure to include this file so validation function fires
-	form_load_include($form_state, 'inc', 'pbj', 'includes/pbj.pages');
+  // Make sure to include this file so validation function fires
+  form_load_include($form_state, 'inc', 'pbj', 'includes/pbj.pages');
 
   $form_state['node'] = $node;
   $field_name = variable_get('pbj_field_' . $node->type, FALSE);
