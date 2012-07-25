@@ -3,16 +3,18 @@
 /**
  * Router to display various image browser pages
  *
- * @param $node
- *   The node object
+ * @param $id
+ *   The form build id of parent form
  * @param $op
  *   The operation requested. Defaults to browse.
  * @param $a1
  *   An optional variable that ofted contains the FID
  */
-function _pbj_image_dashboard($node, $op = 'browse', $a1 = NULL){
+function _pbj_image_dashboard($id, $op = 'browse', $a1 = NULL){
   $output = '';
   $commands = array();
+  $node = _pbj_node_from_form_id($id);
+  _pbj_load('image', $node);
   switch($op){
     case 'image':
       if($a1 && node_access('update', $node)){
@@ -41,7 +43,6 @@ function _pbj_image_dashboard($node, $op = 'browse', $a1 = NULL){
     '#commands' => $commands,
   );
 }
-
 
 /**
  * Image delete form
@@ -114,11 +115,7 @@ function _pbj_image_dashboard_form_validate($form, &$form_state) {
  * Form Builder; Ajax callback
  */
 function _pbj_image_dashboard_form_callback($form, &$form_state) {
-  // dsm('hit');
-  // $commands = array();
-  // $commands[] = ajax_command_replace(NULL, drupal_render($form));
-  // $commands[] = ajax_command_prepend(NULL, theme('status_messages'));
-  // return array('#type' => 'ajax', '#commands' => $commands);
+  // Reload form
   $form['image']['#value'] = '';
   unset($form['image']['filename']);
   return $form;
@@ -141,13 +138,24 @@ function _pbj_image_dashboard_form_submit($form, &$form_state) {
     // that the file is not removed after 6 hours we need to change it's status
     // to 1. Save the ID of the uploaded image for later use.
     $file = file_load($form_state['values']['image']);
-    $file->status = FILE_STATUS_PERMANENT;
+    //$file->status = FILE_STATUS_PERMANENT;
     file_save($file);
 
     $field_name = variable_get('pbj_field_' . $node->type, FALSE);
     $node->{$field_name}[LANGUAGE_NONE][] = (array) $file;
-    $node->pbj_save = TRUE;
-    node_save($node);
+
+    // Filefield path integration
+    if(module_exists('filefield_paths')){
+      // We may not have a nid or title
+      $nid = empty($node->nid) ? time() : FALSE;
+      if($nid){
+        $node->nid = $nid;
+        $node->title = $file->timestamp;
+      }
+      filefield_paths_entity_update($node, 'node');
+      if($nid) $node->nid = null;
+    }
+    _pbj_save('image', $node);
   }
   
   // Flush form
@@ -170,10 +178,10 @@ function _pbj_image_browser($node, $field_name){
     foreach($files as $delta => $file){
       $fids[] = $file['fid'];
       $images[] = '<div class="pbj-browser-image">';
-      $images[] = '<a href="/pbj/dashboard/'.$node->nid.'/image/'.$file['fid'].'" class="use-ajax pbj-browser-image-link">';
+      $images[] = '<a href="/pbj/dashboard/'.$node->form_build_id.'/image/'.$file['fid'].'" class="use-ajax pbj-browser-image-link">';
       $images[] = theme('image_style', array('style_name'=>'pbj_thumbnail', 'path' => $file['uri']));
       $images[] = '</a>';
-      $images[] = '<a href="/pbj/dashboard/'.$node->nid.'/delete/'.$file['fid'].'" class="pbj-image-delete btn btn-mini btn-danger use-ajax">';
+      $images[] = '<a href="/pbj/dashboard/'.$node->form_build_id.'/delete/'.$file['fid'].'" class="pbj-image-delete btn btn-mini btn-danger use-ajax">';
       $images[] = '<i class="icon-remove"></i>';
       $images[] = '</a>';
       $images[] = '</div>';
@@ -248,7 +256,7 @@ function _pbj_image_select($node, $fid){
   );
   $output[] = render($textfield);
   
-  $output[] = '<div class="pbj-left">'.l('<i class="icon-arrow-left"></i> select a different image', 'pbj/dashboard/'.$node->nid, array('html'=>TRUE, 'attributes'=>array('class'=>array('use-ajax','btn',)))).'</div>';
+  $output[] = '<div class="pbj-left">'.l('<i class="icon-arrow-left"></i> select a different image', 'pbj/dashboard/'.$node->form_build_id, array('html'=>TRUE, 'attributes'=>array('class'=>array('use-ajax','btn',)))).'</div>';
   return implode('', $output);
 }
 
@@ -299,7 +307,7 @@ function _pbj_image_delete_form($form, &$form_state, $node, $fid){
   );
   
   $form['return'] = array(
-    '#markup' => l('Cancel', 'pbj/dashboard/'.$node->nid, array('html'=>TRUE, 'attributes'=>array('class'=>array('use-ajax','btn')))),
+    '#markup' => l('Cancel', 'pbj/dashboard/'.$node->form_build_id, array('html'=>TRUE, 'attributes'=>array('class'=>array('use-ajax','btn')))),
   );
 
   return $form;
@@ -310,7 +318,7 @@ function _pbj_image_delete_form($form, &$form_state, $node, $fid){
  */
 function _pbj_image_delete_form_callback($form, &$form_state) {
   $node = $form_state['node'];
-  return _pbj_image_dashboard($node);
+  return _pbj_image_dashboard($node->form_build_id);
 }
 
 /**
@@ -325,8 +333,7 @@ function _pbj_image_delete_form_submit($form, &$form_state) {
     foreach($node->{$field_name}[$node->language] as $delta => $i){
       if($i['fid'] == $image->fid){
         unset($node->{$field_name}[$node->language][$delta]);
-        $node->pbj_save = TRUE;
-        node_save($node);
+        _pbj_save('image', $node);
         file_delete($image);
       }
     }

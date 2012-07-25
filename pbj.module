@@ -19,20 +19,96 @@ function pbj_menu() {
 }
 
 /**
+ * Implements hook_flush_caches
+ *
+ * @todo We may need to clear the cache table differently to make sure
+ *   we don't loose changes
+ */
+function pbj_flush_caches() {
+  return array('cache_pbj');
+}
+
+/**
  * Implements hook_node_presave
  */
 function pbj_node_presave($node) {
   $field_name = variable_get('pbj_field_' . $node->type, FALSE);
-  if (!empty($node->pbj_save)) {
-    // Reset save date
-    $node->changed = $node->original->changed;
-  }elseif($field_name && isset($node->{$field_name}[$node->language]) && $node->original->{$field_name}[$node->language]){
-    /**
-     * For PBJ enabled nodes, we need to prevent the imagefield from being saved
-     * when the main node is saved.
-     */
-    $node->{$field_name}[$node->language] = $node->original->{$field_name}[$node->language];
+  if($field_name){
+    // Add pbj_id so our load functions know what cache to retrieve
+    $node->pbj_id = _pbj_node_id($node);
+    _pbj_load('image', $node, $field_name);
+    // Clear cache as we no longer need it
+    _pbj_delete('image', $node);
+    // No images found
+    if(empty($node->{$field_name}[$node->language])) return;
+
+    if(empty($node->nid)){    
+      // Filefield path integration
+      foreach($node->{$field_name}[$node->language] as $delta => $file){
+        if(module_exists('filefield_paths')) $file['timestamp'] = time();
+        $file['status'] = FILE_STATUS_PERMANENT;
+        file_save((object) $file);
+      }
+    }else{
+      foreach($node->{$field_name}[$node->language] as $delta => $file){
+        $file['status'] = FILE_STATUS_PERMANENT;
+        file_save((object) $file);
+      }
+    }
   }
+}
+
+/**
+ * Return node object by form build id
+ */
+function _pbj_node_from_form_id($form_build_id){
+  $form_state = array();
+  $form = form_get_cache($form_build_id, $form_state);
+  $node = $form['#node'];
+  $node->form_build_id = $form_build_id;
+  $node->pbj_id = _pbj_node_id($node);
+  
+  return $form['#node'];
+}
+
+function _pbj_node_id($node){
+  return empty($node->nid) ? $node->form_build_id : $node->nid;
+}
+
+/**
+ * Load cache of node object
+ *
+ * @param $key
+ *   A identifier for this cache entry
+ * @param $node
+ *   The node object being cached
+ * @param $field_name
+ *   An optional node fieldname. If used, only this field will be updated in node object
+ */
+function _pbj_load($key, &$node, $field_name = NULL){
+  $cache = cache_get($key.$node->pbj_id, 'cache_pbj');
+  if($cache && $field_name){
+    if(empty($cache->data->{$field_name})) return $node;
+    $node->{$field_name} = $cache->data->{$field_name};
+    return;
+  }
+  $node = $cache ? $cache->data : $node;
+}
+
+/**
+ * Save cache of node object
+ */
+function _pbj_save($key, $node){
+  $id = empty($node->nid) ? $node->pbj_id : $node->nid;
+  // Cache for 1 hour and then remove
+  return cache_set($key.$node->pbj_id, $node, 'cache_pbj', strtotime('+1 hour'));
+}
+
+/**
+ * Purge cache
+ */
+function _pbj_delete($key, $node){
+  cache_clear_all($key.$node->pbj_id, 'cache_pbj');
 }
 
 /**
@@ -182,17 +258,16 @@ function pbj_node_block_edit_form_attach_js($form) {
     'fontsize' => variable_get('pbj_fontsize', '10pt'),
     'ace_src_dir' => $base_path . 'sites/all/libraries/ace/src/',
   );
-  
   $jsSettings = array(
     'pbj' => array(
       'settings' => $addJsSettings,
       'browser' => variable_get('pbj_field_' . $form['type']['#value'], FALSE),
-      'nid' => $form['nid']['#value']
+      'id' => $form['form_build_id']['#value'],
     ),
   );
   
-  pbj_add_js($addJsSettings, true);
   drupal_add_js($jsSettings, 'setting');
+  pbj_add_js($addJsSettings, true);
 
   return $form;
 }

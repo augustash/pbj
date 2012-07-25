@@ -16,7 +16,7 @@ function _pbj_menu() {
     'type' => MENU_NORMAL_ITEM,
   );
 
-  $items['pbj/dashboard/%node'] = array(
+  $items['pbj/dashboard/%'] = array(
     'title' => t('Peanut Butter & Jelly'),
     'description' => 'Dashboard',
     'page callback' => '_pbj_image_dashboard',
