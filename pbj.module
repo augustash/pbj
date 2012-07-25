@@ -157,6 +157,7 @@ function pbj_form_alter(&$form, &$form_state, $form_id) {
           if(isset($form[$key]['#language']) 
             && isset($form[$key][$form[$key]['#language']]) 
             && isset($form[$key][$form[$key]['#language']][0])
+            && isset($form[$key][$form[$key]['#language']][0]['#type'])
             && $form[$key][$form[$key]['#language']][0]['#type'] == 'text_format'){
             $textarea = &$form[$key][$form[$key]['#language']][0];
             $form[$key]['#attributes']['class'][] = 'wmd-panel clearfix';
