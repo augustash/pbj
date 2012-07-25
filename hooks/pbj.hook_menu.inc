@@ -16,7 +16,7 @@ function _pbj_menu() {
     'type' => MENU_NORMAL_ITEM,
   );
 
-  $items['pbj/dashboard/%node'] = array(
+  $items['pbj/dashboard/%'] = array(
     'title' => t('Peanut Butter & Jelly'),
     'description' => 'Dashboard',
     'page callback' => '_pbj_image_dashboard',
@@ -28,16 +28,16 @@ function _pbj_menu() {
     'file' => 'includes/pbj.pages.inc',
   );
 
-  $items['pbj/dashboard/new'] = array(
-    'title' => t('Peanut Butter & Jelly'),
-    'description' => 'Dashboard',
-    'page callback' => '_pbj_image_new',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-    'theme callback' => 'ajax_base_page_theme',
-    'delivery callback' => 'ajax_deliver',
-    'file' => 'includes/pbj.pages.inc',
-  );
+  // $items['pbj/dashboard/new'] = array(
+  //   'title' => t('Peanut Butter & Jelly'),
+  //   'description' => 'Dashboard',
+  //   'page callback' => '_pbj_image_new',
+  //   'access arguments' => array('access content'),
+  //   'type' => MENU_CALLBACK,
+  //   'theme callback' => 'ajax_base_page_theme',
+  //   'delivery callback' => 'ajax_deliver',
+  //   'file' => 'includes/pbj.pages.inc',
+  // );
 
   return $items;
 }

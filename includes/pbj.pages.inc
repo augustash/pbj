@@ -42,8 +42,37 @@ function _pbj_image_dashboard($node, $op = 'browse', $a1 = NULL){
   );
 }
 
-function _pbj_image_new(){ 
-  $output = '';
+function _pbj_image_new($type, $form_build_id){ 
+
+  // $node = array(
+  //   'type' => $type,
+  //   'status' => 0,
+  //   'title' => t('Temporary Item'),
+  // );
+  $form_state = array();
+  $form = form_get_cache($form_build_id, $form_state);
+  $node = $form['#node'];
+  $node->status = 0;
+  $node->title = t('Temporary Item');
+  $node->pbj_save = TRUE;
+  node_save($node);
+
+
+  $jsSettings = array(
+    'pbj' => array(
+      'nid' => $node->nid,
+    ),
+  );
+  drupal_add_js($jsSettings, 'setting');
+
+  $output = ''.$form_build_id;
+  $form['nid']['#value'] = $form['vid']['#value'] = $node->nid;
+  $form['changed']['#value'] = strtotime('-1 day');
+  $form['#node'] = $node;
+  form_set_cache($form_build_id, $form, $form_state);
+
+  return _pbj_image_dashboard($node);
+
   $commands = array();
   $commands[] = ajax_command_html('.modal-body', '<div id="pbj">'.$output.'</div>');
   $commands[] = ajax_command_prepend('.modal-body', theme('status_messages'));  

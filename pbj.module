@@ -23,10 +23,13 @@ function pbj_menu() {
  */
 function pbj_node_presave($node) {
   $field_name = variable_get('pbj_field_' . $node->type, FALSE);
-  if (!empty($node->pbj_save)) {
+  if(empty($node->nid) && !empty($node->pbj_save)){
+    // This is a new node being created on demand via image browser
+    $node->created = $node->changed = strtotime('-1 day');
+  }elseif (!empty($node->pbj_save) && isset($node->original->changed)) {
     // Reset save date
     $node->changed = $node->original->changed;
-  }elseif($field_name && isset($node->{$field_name}[$node->language]) && $node->original->{$field_name}[$node->language]){
+  }elseif($field_name && isset($node->{$field_name}[$node->language]) && isset($node->original->{$field_name}[$node->language])){
     /**
      * For PBJ enabled nodes, we need to prevent the imagefield from being saved
      * when the main node is saved.
@@ -186,12 +189,12 @@ function pbj_node_block_edit_form_attach_js($form) {
     'pbj' => array(
       'settings' => $addJsSettings,
       'browser' => variable_get('pbj_field_' . $form['type']['#value'], FALSE),
-      'nid' => $form['nid']['#value'] ? $form['nid']['#value'] : 'new',
+      'id' => $form['nid']['#value'] ? $form['nid']['#value'] : $form['form_build_id']['#value'],
     ),
   );
   
-  pbj_add_js($addJsSettings, true);
   drupal_add_js($jsSettings, 'setting');
+  pbj_add_js($addJsSettings, true);
 
   return $form;
 }
