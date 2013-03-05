@@ -14,7 +14,7 @@ require dirname(__FILE__) . '/hooks/pbj.hook_filter.inc';
  * Add a settings page to configure the module.
  */
 function pbj_menu() {
-  module_load_include('inc', 'pbj', 'hooks/pbj.hook_menu'); 
+  module_load_include('inc', 'pbj', 'hooks/pbj.hook_menu');
   return _pbj_menu();
 }
 
@@ -42,7 +42,7 @@ function pbj_node_presave($node) {
     // No images found
     if(empty($node->{$field_name}[$node->language])) return;
 
-    if(empty($node->nid)){    
+    if(empty($node->nid)){
       // Filefield path integration
       foreach($node->{$field_name}[$node->language] as $delta => $file){
         if(module_exists('filefield_paths')) $file['timestamp'] = time();
@@ -69,7 +69,7 @@ function _pbj_node_from_form_id($form_build_id){
   $node = $form['#node'];
   $node->form_build_id = $form_build_id;
   $node->pbj_id = _pbj_node_id($node);
-  
+
   return $form['#node'];
 }
 
@@ -127,7 +127,7 @@ function pbj_form_alter(&$form, &$form_state, $form_id) {
       } else {
         $formIdent = 'block_' . $form['delta']['#value'];
       }
-      
+
       // Add JavaScript to the form if the pbj editor library is installed.
       if (pbj_library_installed()) {
         $form['pbj_identifier'] = array(
@@ -135,6 +135,7 @@ function pbj_form_alter(&$form, &$form_state, $form_id) {
           '#value' => $formIdent,
         );
 
+        drupal_add_library('system', 'drupal.ajax');
         ctools_include('plugins');
         // Try to load the insert plugin we have chosen to use.
         // Linkit support
@@ -156,8 +157,8 @@ function pbj_form_alter(&$form, &$form_state, $form_id) {
         if($field_name) $form[$field_name]['#access'] = FALSE;
 
         foreach (element_children($form) as $key) {
-          if(isset($form[$key]['#language']) 
-            && isset($form[$key][$form[$key]['#language']]) 
+          if(isset($form[$key]['#language'])
+            && isset($form[$key][$form[$key]['#language']])
             && isset($form[$key][$form[$key]['#language']][0])
             && isset($form[$key][$form[$key]['#language']][0]['#type'])
             && $form[$key][$form[$key]['#language']][0]['#type'] == 'text_format'){
@@ -268,7 +269,7 @@ function pbj_node_block_edit_form_attach_js($form) {
       'id' => $form['form_build_id']['#value'],
     ),
   );
-  
+
   drupal_add_js($jsSettings, 'setting');
   pbj_add_js($addJsSettings, true);
 
@@ -302,7 +303,7 @@ function pbj_library() {
     ),
     'css' => array(
       'sites/all/libraries/pagedown-bootstrap/Markdown.Editor.css' => array(
-        'type' => 'file', 
+        'type' => 'file',
         'media' => 'screen',
       ),
     ),
@@ -317,7 +318,7 @@ function pbj_library() {
     ),
     'css' => array(
       'sites/all/libraries/bootstrap-wysihtml5/css/bootstrap-wysihtml5.css' => array(
-        'type' => 'file', 
+        'type' => 'file',
         'media' => 'screen',
       ),
     ),
